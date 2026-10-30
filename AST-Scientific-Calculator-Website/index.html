@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AST-Scientific-Calculator - a calculator that never uses eval()</title>
+<!-- pages-campaign site for Epsilon0xCell/AST-Scientific-Calculator; source of truth: AST-Scientific-Calculator-Website/ on the default branch -->
+<style>
+/* I picked a drafting sheet for this one because the program itself is a drawing of an expression before it is a number. Blue paper, white lines, and measurements in the margins fit how the parser works. */
+*{box-sizing:border-box}
+body{margin:0;background:#173f6e;color:#eef4fb;font-family:"Courier New",Courier,monospace;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:28px 28px}
+.sheet{max-width:980px;margin:0 auto;padding:28px 22px 60px;border-left:1px solid rgba(255,255,255,.35);border-right:1px solid rgba(255,255,255,.35)}
+.dim{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#bcd6f5}
+h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(34px,6vw,58px);line-height:1.05;margin:10px 0 8px}
+.rule{border-top:2px solid #fff;margin:18px 0}
+img.banner{width:100%;border:1px solid #fff;padding:6px;background:#12325a}
+img.logo{width:84px;border:1px solid #fff;padding:4px;background:#12325a;vertical-align:middle;margin-right:14px}
+.badges img{margin:0 6px 6px 0}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+h2{font-size:15px;letter-spacing:.2em;text-transform:uppercase;border-bottom:1px dashed rgba(255,255,255,.6);padding-bottom:8px}
+p,li{line-height:1.65;font-size:15px}
+pre{background:#0d2c4f;border:1px solid #fff;padding:14px;overflow:auto;color:#d9ecff}
+.chip{display:inline-block;border:1px solid #fff;padding:3px 10px;margin:0 6px 6px 0;font-size:13px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid rgba(255,255,255,.55);padding:7px 9px;text-align:left;font-size:14px}
+a{color:#ffe08a}
+footer{margin-top:40px;border-top:2px solid #fff;padding-top:14px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="sheet">
+<p class="dim">Drawing no. 01 / Sheet: calculator.py / Scale: one expression at a time</p>
+<p><img class="logo" src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/logo.png" alt="AST-Scientific-Calculator logo"><span class="dim">Project mark, filed with the drawing</span></p>
+<img class="banner" src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/banner.png" alt="AST-Scientific-Calculator banner">
+<h1>AST-Scientific-Calculator</h1>
+<p>A command-line calculator that parses expressions with the ast module and never uses eval().</p>
+<div class="badges">
+<img src="https://img.shields.io/github/stars/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Stars">
+<img src="https://img.shields.io/github/forks/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Forks">
+<img src="https://img.shields.io/github/last-commit/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Last commit">
+<img src="https://img.shields.io/github/languages/top/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Top language">
+<img src="https://img.shields.io/github/repo-size/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Repo size">
+</div>
+<div class="rule"></div>
+<div class="grid">
+<main>
+<h2>What this is</h2>
+<p>I built this because eval() will run whatever it is handed. My calculator reads an expression with the ast module first, so the input becomes a tree I can inspect before anything runs.</p>
+<p>I only walk nodes I named on purpose. The FUNCTIONS table in calculator.py lists sqrt, sin, cos, tan, log, log2, log10, ln, exp, abs, floor, ceil, round, min, and max. The OPERATORS table lists seven operators. Anything else gets refused by name.</p>
+<p>It runs two ways. With no argument it opens a REPL with help, history, and an ans value that holds the last result. With an argument it prints one result and exits.</p>
+<h2>The tree, drawn out</h2>
+<!-- I drew this tree by hand in SVG because the repo has no diagram of its own, and this shape is the whole idea: 2 plus 3 times 4 is a tree, not a flat line. -->
+<svg viewBox="0 0 520 230" width="100%" role="img" aria-label="Expression tree for 2 plus 3 times 4" style="border:1px solid #fff;background:#0d2c4f">
+<g stroke="#fff" fill="none"><path d="M260 45 L130 105 M260 45 L390 105 M390 105 L320 170 M390 105 L460 170"/></g>
+<g fill="#0d2c4f" stroke="#fff"><circle cx="260" cy="38" r="20"/><circle cx="130" cy="112" r="20"/><circle cx="390" cy="112" r="20"/><circle cx="320" cy="178" r="20"/><circle cx="460" cy="178" r="20"/></g>
+<g fill="#fff" text-anchor="middle" font-family="Courier New" font-size="16"><text x="260" y="44">+</text><text x="130" y="118">2</text><text x="390" y="118">*</text><text x="320" y="184">3</text><text x="460" y="184">4</text></g>
+<text x="16" y="218" fill="#bcd6f5" font-family="Courier New" font-size="12">FIG. 1 - 2 + 3 * 4 PARSES TO 14 BECAUSE * BINDS DEEPER THAN +</text>
+</svg>
+<h2>Run it</h2>
+<pre>python3 calculator.py                # interactive REPL
+python3 calculator.py "sqrt(144) + 2 * pi"   # one-shot</pre>
+<p>Real output from my run of that one-shot command: <pre>18.2831853072</pre></p>
+<p>In the REPL, 2+2 and sqrt(16) both print = 4, and quit leaves cleanly.</p>
+</main>
+<aside>
+<h2>Checked behavior</h2>
+<table>
+<tr><th>Input</th><th>Result</th></tr>
+<tr><td>2+3*4</td><td>14</td></tr>
+<tr><td>sqrt(16)</td><td>4</td></tr>
+<tr><td>1/0</td><td>error: division by zero</td></tr>
+<tr><td>Very deep chain</td><td>error: expression is nested too deeply</td></tr>
+</table>
+<h2>Stack</h2>
+<span class="chip">Python</span><span class="chip">ast module</span><span class="chip">math module</span>
+<h2>Honest notes</h2>
+<p>The evaluator is recursive because the tree is recursive. A chain with thousands of terms used to die with a RecursionError traceback. It now ends with a plain line I can quote: Error: expression nested too deeply. In the code the message reads "expression is nested too deeply" and the REPL prints it after "error: ".</p>
+<p>Whole floats print as whole numbers. I print 4, not 4.0. Other results are capped at 12 significant digits in format_result.</p>
+<h2>Links</h2>
+<p><a href="https://github.com/Epsilon0xCell/AST-Scientific-Calculator">The repository</a><br><a href="https://github.com/Epsilon0xCell">My GitHub profile</a></p>
+<p class="dim">Annotation: constants are pi, e, tau, plus ans.</p>
+</aside>
+</div>
+<footer>Built by Epsilon0xCell. One file, calculator.py, standard library only.</footer>
+</div>
+</body>
+</html>
