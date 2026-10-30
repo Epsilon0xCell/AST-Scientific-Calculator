@@ -1,6 +1,6 @@
 ![Banner](banner.png)
 
-# Epic-Calculator
+# AST-Scientific-Calculator
 
 ## Implementation
 
