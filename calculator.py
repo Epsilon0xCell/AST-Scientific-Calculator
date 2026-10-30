@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Epic Calculator - a safe, full-featured command-line calculator.
+"""AST Scientific Calculator - a command-line calculator that never uses eval().
 
 Evaluates arithmetic expressions WITHOUT eval(): the input is parsed with
 the `ast` module and only whitelisted math nodes are executed.
@@ -26,6 +26,9 @@ FUNCTIONS = {
     "round": round, "min": min, "max": max,
 }
 CONSTANTS = {"pi": math.pi, "e": math.e, "tau": math.tau}
+# Dispatch is by operator node type, so an operator that is not in this
+# table (bitwise ops, comparisons) never reaches an implementation: the
+# BinOp check in evaluate() falls through to the unsupported-syntax error.
 OPERATORS = {
     ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
     ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b,
@@ -38,7 +41,10 @@ class CalculatorError(ValueError):
     """Raised for anything the calculator refuses to evaluate."""
 
 
-def evaluate(node, ans):
+def evaluate(node: ast.AST, ans: float):
+    # The walk is recursive because the parse tree is recursive: each BinOp
+    # holds its operands as subtrees. That is also why calculate() has to
+    # expect RecursionError from pathological input (see below).
     if isinstance(node, ast.Expression):
         return evaluate(node.body, ans)
     if isinstance(node, ast.Constant):
@@ -71,26 +77,35 @@ def evaluate(node, ans):
     raise CalculatorError(f"unsupported syntax: {type(node).__name__}")
 
 
-def calculate(expression, ans=0.0):
+def calculate(expression: str, ans: float = 0.0):
     """Evaluate one expression string and return the numeric result."""
     try:
         tree = ast.parse(expression, mode="eval")
     except SyntaxError as exc:
         raise CalculatorError(f"syntax error: {exc.msg}") from exc
+    except MemoryError as exc:
+        # The parser itself gives up on absurdly long operator chains with
+        # "Parser stack overflowed". That is an input problem, so report it
+        # the same way as a syntax error instead of dying with a traceback.
+        raise CalculatorError("expression is too complex to parse") from exc
     try:
         return evaluate(tree, ans)
+    except RecursionError as exc:
+        # "1+1+1+..." thousands of terms deep parses fine but walks thousands
+        # of frames deep here. Refuse it as too complex, do not crash.
+        raise CalculatorError("expression is nested too deeply") from exc
     except (ArithmeticError, ValueError, OverflowError) as exc:
         raise CalculatorError(str(exc)) from exc
 
 
-def format_result(value):
+def format_result(value: float):
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return f"{value:.12g}"
 
 
 def repl():
-    print("Epic Calculator - type 'help' for functions, 'quit' to exit.")
+    print("AST Scientific Calculator - type 'help' for functions, 'quit' to exit.")
     ans, history = 0.0, []
     while True:
         try:
