@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # Epic-Calculator
 
 ## Implementation
