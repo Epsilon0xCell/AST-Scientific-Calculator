@@ -3,85 +3,703 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AST-Scientific-Calculator - a calculator that never uses eval()</title>
+<title>AST-Scientific-Calculator: The Instrument Panel</title>
 <!-- pages-campaign site for Epsilon0xCell/AST-Scientific-Calculator; source of truth: AST-Scientific-Calculator-Website/ on the default branch -->
+<script>document.documentElement.className += " js";</script>
 <style>
-/* I picked a drafting sheet for this one because the program itself is a drawing of an expression before it is a number. Blue paper, white lines, and measurements in the margins fit how the parser works. */
+/* I built this page the way I think about the program: an instrument on a bench.
+   The calculator sits at the top because it is the thing itself, and the notes
+   sit below it because notes are what a bench is for. */
+:root{
+  --bench:#191c1e; --bench2:#22262a; --graphite:#2e3338; --graphite2:#3a4046;
+  --edge:#101214; --ink:#e8e6df; --dim:#a9a89e; --lcd:#d7e6bd; --lcdink:#22301a;
+  --brass:#d99a35; --red:#c8452c; --paper:#efece2; --paperink:#26241f; --line:#4a5054;
+}
 *{box-sizing:border-box}
-body{margin:0;background:#173f6e;color:#eef4fb;font-family:"Courier New",Courier,monospace;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:28px 28px}
-.sheet{max-width:980px;margin:0 auto;padding:28px 22px 60px;border-left:1px solid rgba(255,255,255,.35);border-right:1px solid rgba(255,255,255,.35)}
-.dim{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#bcd6f5}
-h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(34px,6vw,58px);line-height:1.05;margin:10px 0 8px}
-.rule{border-top:2px solid #fff;margin:18px 0}
-img.banner{width:100%;border:1px solid #fff;padding:6px;background:#12325a}
-img.logo{width:84px;border:1px solid #fff;padding:4px;background:#12325a;vertical-align:middle;margin-right:14px}
-.badges img{margin:0 6px 6px 0}
-.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px}
-@media(max-width:760px){.grid{grid-template-columns:1fr}}
-h2{font-size:15px;letter-spacing:.2em;text-transform:uppercase;border-bottom:1px dashed rgba(255,255,255,.6);padding-bottom:8px}
-p,li{line-height:1.65;font-size:15px}
-pre{background:#0d2c4f;border:1px solid #fff;padding:14px;overflow:auto;color:#d9ecff}
-.chip{display:inline-block;border:1px solid #fff;padding:3px 10px;margin:0 6px 6px 0;font-size:13px}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid rgba(255,255,255,.55);padding:7px 9px;text-align:left;font-size:14px}
-a{color:#ffe08a}
-footer{margin-top:40px;border-top:2px solid #fff;padding-top:14px;font-size:13px}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bench);color:var(--ink);
+  font-family:"Segoe UI",Verdana,Geneva,sans-serif;
+  background-image:radial-gradient(rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:22px 22px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 70px}
+a{color:var(--brass)}
+.masthead{padding:26px 0 8px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.masthead img.mark{width:72px;height:72px;object-fit:cover;border:2px solid var(--line);border-radius:6px}
+.masthead h1{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  font-size:clamp(26px,4.4vw,44px);margin:0;letter-spacing:.01em;font-weight:700}
+.masthead .sub{color:var(--dim);margin:4px 0 0;font-size:15px;max-width:640px;line-height:1.5}
+.badges{margin:10px 0 4px}
+.badges img{margin:0 6px 6px 0;vertical-align:middle}
+img.banner{width:100%;height:150px;object-fit:cover;border:2px solid var(--line);border-radius:6px;margin-top:12px}
+.plate-label{font-family:ui-monospace,Consolas,monospace;font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--dim);margin:8px 0 0}
+.panel{background:linear-gradient(180deg,var(--graphite2),var(--graphite) 30%,#262b30);
+  border:1px solid var(--edge);border-radius:14px;padding:20px 18px 18px;
+  box-shadow:0 18px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14)}
+.deck{display:grid;grid-template-columns:minmax(330px,430px) 1fr;gap:26px;margin-top:26px;align-items:start}
+@media(max-width:920px){.deck{grid-template-columns:1fr}}
+.panel .brand{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.panel .brand b{font-family:ui-monospace,Consolas,monospace;letter-spacing:.14em;font-size:13px}
+.panel .brand span{font-size:11px;color:var(--dim);letter-spacing:.18em;text-transform:uppercase}
+.screen{background:var(--lcd);border-radius:8px;padding:12px 14px 10px;
+  box-shadow:inset 0 3px 10px rgba(20,30,10,.55),inset 0 -1px 0 rgba(255,255,255,.5);
+  border:1px solid #141a10}
+.screen label{display:block;font-size:10px;letter-spacing:.22em;color:#5a6b47;text-transform:uppercase;margin-bottom:4px}
+#expr{width:100%;border:0;background:transparent;outline:none;color:var(--lcdink);
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:24px;font-weight:600}
+#readout{display:flex;justify-content:space-between;gap:10px;margin-top:6px;
+  font-family:ui-monospace,Consolas,monospace;font-size:14px;color:#42532f}
+#result{font-weight:700;font-size:17px}
+.fnrow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 10px}
+.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.key{appearance:none;border:1px solid #14171a;border-radius:8px;cursor:pointer;
+  background:linear-gradient(180deg,#e9e6dc,#cfcabf);color:#23231f;
+  font-family:ui-monospace,Consolas,monospace;font-size:16px;font-weight:700;
+  padding:12px 0 10px;box-shadow:0 4px 0 #14171a,0 6px 8px rgba(0,0,0,.4);
+  transition:transform .06s ease,box-shadow .06s ease}
+.key:active,.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 #14171a,0 2px 3px rgba(0,0,0,.4)}
+.key.op{background:linear-gradient(180deg,#575e64,#3f454b);color:#f2efe6}
+.key.fn{font-size:12px;padding:8px 10px;background:linear-gradient(180deg,#4c5152,#363b3c);color:#e9dfc8;
+  box-shadow:0 3px 0 #14171a;border-radius:6px}
+.key.go{background:linear-gradient(180deg,#e8ac4a,#c07f22);color:#241a05}
+.key.danger{background:linear-gradient(180deg,#d2604a,#a83c26);color:#fff4ee}
+.examples{margin:14px 0 0;font-size:13px;color:var(--dim);line-height:2}
+.examples button{appearance:none;border:1px solid var(--line);background:var(--bench2);color:var(--ink);
+  border-radius:20px;padding:3px 11px;font-family:ui-monospace,Consolas,monospace;font-size:12px;cursor:pointer;margin-right:5px}
+.examples button:hover{border-color:var(--brass);color:var(--brass)}
+.treebench{background:var(--paper);color:var(--paperink);border-radius:10px;padding:18px 20px 14px;
+  box-shadow:0 14px 28px rgba(0,0,0,.45)}
+.treebench h2{margin:0 0 4px;font-size:19px}
+.treebench p{margin:0 0 10px;font-size:14px;line-height:1.55;color:#4c483e}
+#treeBox{border:1px solid #c9c3ae;border-radius:6px;background:
+  repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(90,110,140,.14) 24px),
+  repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(90,110,140,.14) 24px),#f7f4ea;
+  overflow-x:auto}
+#treeStatus{font-family:ui-monospace,Consolas,monospace;font-size:13px;margin:9px 0 2px;color:#5c5747}
+.note{background:var(--paper);color:var(--paperink);border-radius:4px;
+  padding:26px 30px 22px;margin-top:30px;box-shadow:0 10px 22px rgba(0,0,0,.4);
+  border-left:6px solid var(--brass)}
+.note.red{border-left-color:var(--red)}
+.note h2{margin:0 0 6px;font-size:23px}
+.note h2 .no{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#8a8474;
+  letter-spacing:.2em;display:block;margin-bottom:5px}
+.note p,.note li{line-height:1.65;font-size:15px}
+.note code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;background:#e3ddca;padding:1px 5px;border-radius:3px}
+pre{background:#23272b;color:#e6e1cf;border-radius:6px;padding:15px 17px;overflow-x:auto;
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:13px;line-height:1.55}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #c9c2ab;padding:7px 10px;text-align:left;font-size:14px}
+th{background:#e6e0cc;font-family:ui-monospace,Consolas,monospace;font-size:12px;letter-spacing:.08em}
+td.mono,th.mono{font-family:ui-monospace,Consolas,monospace}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+@media(max-width:820px){.split{grid-template-columns:1fr}}
+.plates{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+@media(max-width:820px){.plates{grid-template-columns:1fr}}
+figure.plate{margin:0;background:#101214;border:1px solid var(--line);border-radius:8px;padding:10px}
+figure.plate img{width:100%;display:block;border-radius:4px}
+figure.plate figcaption{font-size:13px;color:var(--dim);line-height:1.55;padding:9px 4px 3px}
+figure.plate figcaption b{color:var(--ink)}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;font-size:13px;color:var(--dim);line-height:1.7}
+.js .note,.js .treebench,.js figure.plate{opacity:0;transform:translateY(16px);
+  transition:opacity .55s ease,transform .55s ease}
+.js .in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .js .note,.js .treebench,.js figure.plate{opacity:1;transform:none;transition:none}
+  .key{transition:none}
+  .key:active,.key.pressed{transform:none}
+}
 </style>
 </head>
 <body>
-<div class="sheet">
-<p class="dim">Drawing no. 01 / Sheet: calculator.py / Scale: one expression at a time</p>
-<p><img class="logo" src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/logo.png" alt="AST-Scientific-Calculator logo"><span class="dim">Project mark, filed with the drawing</span></p>
+<div class="wrap">
+
+<header class="masthead">
+  <img class="mark" src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/logo.png" alt="AST-Scientific-Calculator logo">
+  <div>
+    <h1>AST-Scientific-Calculator</h1>
+    <p class="sub">A command-line calculator in one Python file, calculator.py. I parse each expression into a tree and walk only the nodes I allowed on purpose. Nothing is ever handed to eval.</p>
+    <div class="badges">
+      <img src="https://img.shields.io/github/stars/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="Stars">
+      <img src="https://img.shields.io/github/forks/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="Forks">
+      <img src="https://img.shields.io/github/last-commit/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="Last commit">
+      <img src="https://img.shields.io/github/languages/top/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="Top language">
+      <img src="https://img.shields.io/github/repo-size/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="Repo size">
+      <img src="https://img.shields.io/github/license/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=d99a35&labelColor=2e3338" alt="License: MIT">
+    </div>
+  </div>
+</header>
+
 <img class="banner" src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/banner.png" alt="AST-Scientific-Calculator banner">
-<h1>AST-Scientific-Calculator</h1>
-<p>A command-line calculator that parses expressions with the ast module and never uses eval().</p>
-<div class="badges">
-<img src="https://img.shields.io/github/stars/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Stars">
-<img src="https://img.shields.io/github/forks/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Forks">
-<img src="https://img.shields.io/github/last-commit/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Last commit">
-<img src="https://img.shields.io/github/languages/top/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Top language">
-<img src="https://img.shields.io/github/repo-size/Epsilon0xCell/AST-Scientific-Calculator?style=flat-square&color=ffe08a&labelColor=0d2c4f" alt="Repo size">
+<p class="plate-label">Repo banner, laid on the bench above the instrument</p>
+
+<div class="deck">
+  <section class="panel" aria-label="Working calculator">
+    <div class="brand"><b>AST-1 BENCH UNIT</b><span>no eval inside</span></div>
+    <div class="screen">
+      <label for="expr">Expression</label>
+      <input id="expr" type="text" value="2 + 3 * 4" autocomplete="off" spellcheck="false"
+        aria-label="Type an expression, or use the keys">
+      <div id="readout"><span id="ansOut">ans = 0</span><span id="result">= 14</span></div>
+    </div>
+    <!-- I put every function calculator.py allows on this strip, spelled the
+         same way, so the panel teaches the real set instead of a smaller one. -->
+    <div class="fnrow" id="fnRow"></div>
+    <div class="keys" id="keyGrid"></div>
+    <p class="examples">Try one of mine:
+      <button type="button" data-example="sqrt(144) + 2 * pi">sqrt(144) + 2 * pi</button>
+      <button type="button" data-example="max(3, 9, 4) + floor(7 / 2)">max(3, 9, 4) + floor(7 / 2)</button>
+      <button type="button" data-example="-2 ** 2">-2 ** 2</button>
+      <button type="button" data-example="foo(2)">foo(2)</button>
+    </p>
+    <p style="font-size:12.5px;color:var(--dim);line-height:1.6;margin:12px 0 0">
+      This panel is a page version of the same rules, written by hand for this
+      page. It uses no eval and no Function constructor, same as the program.
+      The real program is <a href="https://github.com/Epsilon0xCell/AST-Scientific-Calculator/blob/main/calculator.py">calculator.py</a>,
+      which you run on your own machine.
+    </p>
+  </section>
+
+  <section class="treebench" aria-label="Parse tree of the current expression">
+    <h2>The tree, drawn as you type</h2>
+    <p>An expression is not a flat line to me. It is a tree, and the shape of the
+      tree is the order the work happens in. This drawing follows whatever is in
+      the display, key by key. Multiplication sits deeper than addition because
+      it binds tighter, and that is why 2 + 3 * 4 is 14 and not 20.</p>
+    <div id="treeBox">
+      <!-- I drew this first tree directly in the markup for 2 + 3 * 4, so the
+           idea is on the page even before any script runs. The script redraws
+           this same drawing live once the visitor starts typing. -->
+      <svg id="treeSvg" viewBox="0 0 420 190" width="100%" role="img" aria-label="Parse tree for 2 plus 3 times 4">
+        <g stroke="#7a7462" stroke-width="1.6">
+          <path d="M210 42 L110 102 M210 42 L310 102 M310 102 L255 158 M310 102 L365 158" fill="none"/>
+        </g>
+        <g font-family="ui-monospace, Consolas, monospace" font-size="15" text-anchor="middle">
+          <rect x="184" y="24" width="52" height="34" rx="6" fill="#2e3338"/><text x="210" y="47" fill="#f2efe6">+</text>
+          <rect x="84" y="86" width="52" height="34" rx="6" fill="#efece2" stroke="#7a7462"/><text x="110" y="109" fill="#26241f">2</text>
+          <rect x="284" y="86" width="52" height="34" rx="6" fill="#2e3338"/><text x="310" y="109" fill="#f2efe6">*</text>
+          <rect x="229" y="142" width="52" height="34" rx="6" fill="#efece2" stroke="#7a7462"/><text x="255" y="165" fill="#26241f">3</text>
+          <rect x="339" y="142" width="52" height="34" rx="6" fill="#efece2" stroke="#7a7462"/><text x="365" y="165" fill="#26241f">4</text>
+        </g>
+      </svg>
+    </div>
+    <p id="treeStatus">Tree for: 2 + 3 * 4</p>
+  </section>
 </div>
-<div class="rule"></div>
-<div class="grid">
-<main>
-<h2>What this is</h2>
-<p>I built this because eval() will run whatever it is handed. My calculator reads an expression with the ast module first, so the input becomes a tree I can inspect before anything runs.</p>
-<p>I only walk nodes I named on purpose. The FUNCTIONS table in calculator.py lists sqrt, sin, cos, tan, log, log2, log10, ln, exp, abs, floor, ceil, round, min, and max. The OPERATORS table lists seven operators. Anything else gets refused by name.</p>
-<p>It runs two ways. With no argument it opens a REPL with help, history, and an ans value that holds the last result. With an argument it prints one result and exits.</p>
-<h2>The tree, drawn out</h2>
-<!-- I drew this tree by hand in SVG because the repo has no diagram of its own, and this shape is the whole idea: 2 plus 3 times 4 is a tree, not a flat line. -->
-<svg viewBox="0 0 520 230" width="100%" role="img" aria-label="Expression tree for 2 plus 3 times 4" style="border:1px solid #fff;background:#0d2c4f">
-<g stroke="#fff" fill="none"><path d="M260 45 L130 105 M260 45 L390 105 M390 105 L320 170 M390 105 L460 170"/></g>
-<g fill="#0d2c4f" stroke="#fff"><circle cx="260" cy="38" r="20"/><circle cx="130" cy="112" r="20"/><circle cx="390" cy="112" r="20"/><circle cx="320" cy="178" r="20"/><circle cx="460" cy="178" r="20"/></g>
-<g fill="#fff" text-anchor="middle" font-family="Courier New" font-size="16"><text x="260" y="44">+</text><text x="130" y="118">2</text><text x="390" y="118">*</text><text x="320" y="184">3</text><text x="460" y="184">4</text></g>
-<text x="16" y="218" fill="#bcd6f5" font-family="Courier New" font-size="12">FIG. 1 - 2 + 3 * 4 PARSES TO 14 BECAUSE * BINDS DEEPER THAN +</text>
-</svg>
-<h2>Run it</h2>
-<pre>python3 calculator.py                # interactive REPL
-python3 calculator.py "sqrt(144) + 2 * pi"   # one-shot</pre>
-<p>Real output from my run of that one-shot command: <pre>18.2831853072</pre></p>
-<p>In the REPL, 2+2 and sqrt(16) both print = 4, and quit leaves cleanly.</p>
-</main>
-<aside>
-<h2>Checked behavior</h2>
-<table>
-<tr><th>Input</th><th>Result</th></tr>
-<tr><td>2+3*4</td><td>14</td></tr>
-<tr><td>sqrt(16)</td><td>4</td></tr>
-<tr><td>1/0</td><td>error: division by zero</td></tr>
-<tr><td>Very deep chain</td><td>error: expression is nested too deeply</td></tr>
-</table>
-<h2>Stack</h2>
-<span class="chip">Python</span><span class="chip">ast module</span><span class="chip">math module</span>
-<h2>Honest notes</h2>
-<p>The evaluator is recursive because the tree is recursive. A chain with thousands of terms used to die with a RecursionError traceback. It now ends with a plain line I can quote: Error: expression nested too deeply. In the code the message reads "expression is nested too deeply" and the REPL prints it after "error: ".</p>
-<p>Whole floats print as whole numbers. I print 4, not 4.0. Other results are capped at 12 significant digits in format_result.</p>
-<h2>Links</h2>
-<p><a href="https://github.com/Epsilon0xCell/AST-Scientific-Calculator">The repository</a><br><a href="https://github.com/Epsilon0xCell">My GitHub profile</a></p>
-<p class="dim">Annotation: constants are pi, e, tau, plus ans.</p>
-</aside>
+
+<section class="note">
+  <h2><span class="no">Bench note 01</span>How it parses</h2>
+  <p>When I run <code>python3 calculator.py "sqrt(144) + 2 * pi"</code>, the text goes
+    to the ast module first, not to an evaluator. Parsing turns it into a tree of
+    nodes: a call at the top, numbers and names at the leaves. My evaluate
+    function then walks that tree and answers one question at each node: did I
+    allow this exact thing?</p>
+  <p>Three tables do the allowing. FUNCTIONS names 18 functions, CONSTANTS names
+    pi, e, and tau, and OPERATORS names seven operators. The name ans is handled
+    on its own, because it changes after every result. Here are the two tables
+    that carry most of the rules, copied from calculator.py at lines 28 to 34
+    and lines 41 to 46:</p>
+  <pre>FUNCTIONS = {
+    "sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan,
+    "asin": math.asin, "acos": math.acos, "atan": math.atan,
+    "log": math.log, "log2": math.log2, "log10": math.log10, "ln": math.log,
+    "exp": math.exp, "abs": abs, "floor": math.floor, "ceil": math.ceil,
+    "round": round, "min": min, "max": max,
+}</pre>
+  <pre>OPERATORS = {
+    ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
+    ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b,
+    ast.FloorDiv: lambda a, b: a // b, ast.Mod: lambda a, b: a % b,
+    ast.Pow: lambda a, b: a ** b,
+}</pre>
+  <p>It runs two ways. With an argument it prints one result and exits, and the
+    README example above prints 18.2831853072, which I checked by running it.
+    With no argument it opens a REPL with a calc&gt; prompt, where help lists the
+    functions and constants, history shows the expressions that worked, and
+    quit, exit, or q leaves. A line that fails leaves ans and history alone.</p>
+</section>
+
+<section class="note red">
+  <h2><span class="no">Bench note 02</span>What it refuses</h2>
+  <p>The refusal is the feature I care about most. eval would run whatever it is
+    handed. My evaluator names a short list of things it will do, and every
+    other node type falls through to one error at the bottom of evaluate. These
+    are lines 89 to 105 of calculator.py, the call check and the fall-through:</p>
+  <pre>    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        name = node.func.id
+        if name not in FUNCTIONS:
+            raise CalculatorError(f"unknown function: {name}")
+        # I reject keyword arguments outright. None of the functions I
+        # allow need them, and accepting them would widen the surface
+        # for no gain in a calculator.
+        if node.keywords:
+            raise CalculatorError("keyword arguments are not supported")
+        # I evaluate the arguments in order and pass them as plain
+        # positional values. A starred argument has no handler in this
+        # function, so it falls to the error at the bottom.
+        return FUNCTIONS[name](*[evaluate(a, ans) for a in node.args])
+    # Anything I did not name above lands here: attribute access,
+    # subscripts, comparisons, and every other node type. I refuse it
+    # by name so the user can see what part I rejected.
+    raise CalculatorError(f"unsupported syntax: {type(node).__name__}")</pre>
+  <p>Refusals I checked by running the program, word for word:</p>
+  <table>
+    <tr><th class="mono">Typed</th><th>What comes back</th></tr>
+    <tr><td class="mono">x + 1</td><td class="mono">unknown name: x</td></tr>
+    <tr><td class="mono">foo(2)</td><td class="mono">unknown function: foo</td></tr>
+    <tr><td class="mono">'hello'</td><td class="mono">unsupported constant: 'hello'</td></tr>
+    <tr><td class="mono">2 &lt; 3</td><td class="mono">unsupported syntax: Compare</td></tr>
+    <tr><td class="mono">a.b</td><td class="mono">unsupported syntax: Attribute</td></tr>
+    <tr><td class="mono">__import__('os')</td><td class="mono">unknown function: __import__</td></tr>
+  </table>
+  <p>Strings are refused as constants, keyword arguments are refused outright,
+    and bitwise operators never reach an implementation because they are not
+    in OPERATORS. The panel above keeps the same habit: type foo(2) into it and
+    it answers the same way.</p>
+</section>
+
+<section class="note">
+  <h2><span class="no">Bench note 03</span>Checked behaviors</h2>
+  <p>Every result in this table came out of calculator.py itself when I ran it
+    for this page. I did not type the answers from memory.</p>
+  <div class="split">
+    <table>
+      <tr><th class="mono">Expression</th><th>Result</th></tr>
+      <tr><td class="mono">2 + 3 * 4</td><td class="mono">14</td></tr>
+      <tr><td class="mono">(2 + 3) * 4</td><td class="mono">20</td></tr>
+      <tr><td class="mono">sqrt(144) + 2 * pi</td><td class="mono">18.2831853072</td></tr>
+      <tr><td class="mono">2 ** 10</td><td class="mono">1024</td></tr>
+      <tr><td class="mono">10 // 3 and 10 % 3</td><td class="mono">3 and 1</td></tr>
+      <tr><td class="mono">floor(7 / 2)</td><td class="mono">3</td></tr>
+    </table>
+    <table>
+      <tr><th class="mono">Expression</th><th>Result</th></tr>
+      <tr><td class="mono">max(3, 9, 4)</td><td class="mono">9</td></tr>
+      <tr><td class="mono">log(e)</td><td class="mono">1</td></tr>
+      <tr><td class="mono">sin(pi / 2)</td><td class="mono">1</td></tr>
+      <tr><td class="mono">0.1 + 0.2</td><td class="mono">0.3</td></tr>
+      <tr><td class="mono">-2 ** 2</td><td class="mono">-4</td></tr>
+      <tr><td class="mono">round(2.5)</td><td class="mono">2</td></tr>
+    </table>
+  </div>
+  <p>Three of those deserve a sentence each. The 0.1 + 0.2 line prints 0.3
+    because format_result caps output at 12 significant digits, which hides the
+    long binary tail. The minus 2 squared line is minus 4 because the power
+    binds before the unary minus, the same shape the tree above draws. And
+    round(2.5) is 2 because Python rounds a half to the nearest even number;
+    the panel copies that too, instead of rounding every half up.</p>
+  <p>Math failures fold into the same error type: 1 / 0 answers division by
+    zero, and sqrt(-1) answers math domain error. Whole floats print as whole
+    numbers, so sqrt(16) prints 4, not 4.0.</p>
+</section>
+
+<section class="note">
+  <h2><span class="no">Bench note 04</span>Honest notes</h2>
+  <p>The evaluator is recursive because the tree is recursive, and that has a
+    real cost. An expression chained thousands of terms deep used to die with a
+    RecursionError traceback. calculate now catches that and answers with a
+    plain line instead. Lines 120 to 126 of calculator.py:</p>
+  <pre>    try:
+        return evaluate(tree, ans)
+    except RecursionError as exc:
+        # A chain with thousands of terms can parse fine and still walk
+        # thousands of frames deep in my evaluator. I refuse it as too
+        # deep instead of letting the interpreter kill the process.
+        raise CalculatorError("expression is nested too deeply") from exc</pre>
+  <p>My security audit of this repo came back clean: a closed whitelist
+    evaluator with no eval anywhere in it. One note from that audit is worth
+    keeping on the bench. The Pow node applies Python exponentiation directly,
+    so a huge exponent typed by the person at the keyboard costs local time
+    and local memory only. There is no server here to hurt, and the person
+    typing pays for their own exponent. The panel is blunter: it works in
+    browser numbers and reports a result that overflows them as an error.</p>
+  <p>Two smaller honesty items. min and max in the real program are the Python
+    builtins, so they want at least two values to compare in normal use. And
+    there are no test files in this repo yet, so the checks on this page are
+    runs I did by hand and wrote down, not a suite that reruns itself.</p>
+</section>
+
+<section class="note" style="border-left-color:var(--line)">
+  <h2><span class="no">Bench plates</span>The six sheets from the Visuals folder</h2>
+  <p>I keep hand drawn sheets for this repo in AST-Scientific-Calculator-Visuals.
+    They were drawn from the files as they sat on 2026-10-30, and the counts on
+    them are counts from that snapshot. I pinned all six up here because the
+    tree idea is easier to trust when the drawing habit behind it is visible.</p>
+  <div class="plates">
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/architecture.png" alt="Architecture sheet for AST-Scientific-Calculator">
+      <figcaption><b>Architecture.</b> The put-together: the biggest file at the top, the files under it next, and real function and class names read out of the source.</figcaption>
+    </figure>
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/data-flow.png" alt="Data flow sheet for AST-Scientific-Calculator">
+      <figcaption><b>Data flow.</b> The data path in one direction, from the file to the result, with nothing drawn going backwards.</figcaption>
+    </figure>
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/flowchart.png" alt="Flowchart sheet for AST-Scientific-Calculator">
+      <figcaption><b>Flowchart.</b> The run: start at the entry file, pass through the real steps the code takes, and end where the code ends.</figcaption>
+    </figure>
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/product-map.png" alt="Product map sheet for AST-Scientific-Calculator">
+      <figcaption><b>Product map.</b> What the project is for, what goes in, what comes out, and where it stops. The stop card matters as much as the rest to me.</figcaption>
+    </figure>
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/schematic.png" alt="Schematic sheet for AST-Scientific-Calculator">
+      <figcaption><b>Schematic.</b> Titled as a schematic of the apparatus: the document is the apparatus and its sections are the parts, drawn from an early snapshot of the repo.</figcaption>
+    </figure>
+    <figure class="plate">
+      <img src="https://raw.githubusercontent.com/Epsilon0xCell/AST-Scientific-Calculator/main/AST-Scientific-Calculator-Visuals/statistics.png" alt="Statistics sheet for AST-Scientific-Calculator">
+      <figcaption><b>Statistics.</b> The counts, drawn as bars you can check against the repo: lines counted file by file, grouped by the language each extension belongs to.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer>
+  <p>Run it yourself: <code>python3 calculator.py</code> for the REPL, or
+    <code>python3 calculator.py "sqrt(144) + 2 * pi"</code> for one answer.<br>
+    Code: <a href="https://github.com/Epsilon0xCell/AST-Scientific-Calculator">github.com/Epsilon0xCell/AST-Scientific-Calculator</a> ·
+    Profile: <a href="https://github.com/Epsilon0xCell">github.com/Epsilon0xCell</a><br>
+    Built by Epsilon0xCell. Licensed under MIT, the same license file that sits in the repo root.</p>
+</footer>
 </div>
-<footer>Built by Epsilon0xCell. One file, calculator.py, standard library only.</footer>
-</div>
+
+<script>
+"use strict";
+/* I wrote this parser by hand for the page because using eval here would
+   undo the whole point of the project. It is a tokenizer plus a recursive
+   descent parser, and it allows exactly the set calculator.py allows:
+   seven operators, 18 named functions, pi, e, tau, and ans. */
+var CONSTANTS = { pi: Math.PI, e: Math.E, tau: Math.PI * 2 };
+var FUNCTIONS = {
+  sqrt: Math.sqrt, sin: Math.sin, cos: Math.cos, tan: Math.tan,
+  asin: Math.asin, acos: Math.acos, atan: Math.atan,
+  log: function (x, b) { return b === undefined ? Math.log(x) : Math.log(x) / Math.log(b); },
+  log2: Math.log2, log10: Math.log10,
+  ln: function (x, b) { return b === undefined ? Math.log(x) : Math.log(x) / Math.log(b); },
+  exp: Math.exp, abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
+  round: null, min: null, max: null
+};
+/* Python rounds a half to the nearest even number, so round(2.5) is 2 in
+   calculator.py. I copy that here instead of the usual browser habit of
+   rounding every half up, because this panel claims to follow the program. */
+function pyRound(x, digits) {
+  if (digits === undefined) {
+    var f = Math.floor(x), diff = x - f;
+    if (diff > 0.5) return f + 1;
+    if (diff < 0.5) return f;
+    return f % 2 === 0 ? f : f + 1;
+  }
+  var scale = Math.pow(10, digits);
+  return pyRound(x * scale) / scale;
+}
+FUNCTIONS.round = pyRound;
+FUNCTIONS.min = function () { return Math.min.apply(null, arguments); };
+FUNCTIONS.max = function () { return Math.max.apply(null, arguments); };
+
+function tokenize(text) {
+  var tokens = [], i = 0;
+  while (i < text.length) {
+    var ch = text[i];
+    if (ch === " " || ch === "\t") { i++; continue; }
+    if (/[0-9.]/.test(ch)) {
+      var m = /^[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?/.exec(text.slice(i));
+      if (!m) throw new Error("number I cannot read at position " + (i + 1));
+      tokens.push({ kind: "num", value: parseFloat(m[0]), label: m[0] });
+      i += m[0].length; continue;
+    }
+    if (/[A-Za-z_]/.test(ch)) {
+      var name = /^[A-Za-z_][A-Za-z0-9_]*/.exec(text.slice(i))[0];
+      tokens.push({ kind: "name", value: name, label: name });
+      i += name.length; continue;
+    }
+    if (text.substr(i, 2) === "**" || text.substr(i, 2) === "//") {
+      tokens.push({ kind: "op", value: text.substr(i, 2), label: text.substr(i, 2) });
+      i += 2; continue;
+    }
+    if ("+-*/%(),".indexOf(ch) >= 0) {
+      tokens.push({ kind: "op", value: ch, label: ch }); i++; continue;
+    }
+    /* One refusal I keep worded plainly: a character outside the set stops
+       the parse, the way an unknown node stops the Python program. */
+    throw new Error("character I do not accept: " + ch);
+  }
+  return tokens;
+}
+
+/* The grammar mirrors Python where it matters to a result: power binds
+   before a unary minus on its left, and an exponent may itself be negative,
+   so -2 ** 2 is -4 and 2 ** -2 is 0.25, same as calculator.py. */
+function parseTokens(tokens) {
+  var pos = 0;
+  function peek() { return tokens[pos]; }
+  function next() { return tokens[pos++]; }
+  function expect(value) {
+    var t = next();
+    if (!t || t.value !== value) throw new Error("expected " + value);
+  }
+  function parseAdd() {
+    var node = parseMul();
+    while (peek() && (peek().value === "+" || peek().value === "-")) {
+      var op = next().value;
+      node = { type: "bin", op: op, left: node, right: parseMul() };
+    }
+    return node;
+  }
+  function parseMul() {
+    var node = parseUnary();
+    while (peek() && ["*", "/", "//", "%"].indexOf(peek().value) >= 0) {
+      var op = next().value;
+      node = { type: "bin", op: op, left: node, right: parseUnary() };
+    }
+    return node;
+  }
+  function parseUnary() {
+    var t = peek();
+    if (t && (t.value === "-" || t.value === "+")) {
+      next();
+      return { type: "unary", op: t.value, operand: parseUnary() };
+    }
+    return parsePower();
+  }
+  function parsePower() {
+    var base = parseAtom();
+    if (peek() && peek().value === "**") {
+      next();
+      return { type: "bin", op: "**", left: base, right: parseUnary() };
+    }
+    return base;
+  }
+  function parseAtom() {
+    var t = next();
+    if (!t) throw new Error("expression ends early");
+    if (t.kind === "num") return { type: "num", value: t.value, label: t.label };
+    if (t.value === "(") {
+      var inner = parseAdd();
+      expect(")");
+      return inner;
+    }
+    if (t.kind === "name") {
+      if (peek() && peek().value === "(") {
+        next();
+        var args = [];
+        if (!(peek() && peek().value === ")")) {
+          args.push(parseAdd());
+          while (peek() && peek().value === ",") { next(); args.push(parseAdd()); }
+        }
+        expect(")");
+        if (!(t.value in FUNCTIONS)) throw new Error("unknown function: " + t.value);
+        return { type: "call", name: t.value, args: args };
+      }
+      if (t.value === "ans") return { type: "name", name: "ans" };
+      if (t.value in CONSTANTS) return { type: "name", name: t.value };
+      throw new Error("unknown name: " + t.value);
+    }
+    throw new Error("syntax I do not accept near: " + t.label);
+  }
+  var root = parseAdd();
+  if (pos < tokens.length) throw new Error("extra input after the expression: " + tokens[pos].label);
+  return root;
+}
+
+function evaluate(node, ans) {
+  if (node.type === "num") return node.value;
+  if (node.type === "name") return node.name === "ans" ? ans : CONSTANTS[node.name];
+  if (node.type === "unary") {
+    var v = evaluate(node.operand, ans);
+    return node.op === "-" ? -v : +v;
+  }
+  if (node.type === "call") {
+    var vals = node.args.map(function (a) { return evaluate(a, ans); });
+    var out = FUNCTIONS[node.name].apply(null, vals);
+    if (typeof out !== "number" || isNaN(out)) throw new Error("math domain error");
+    return out;
+  }
+  var a = evaluate(node.left, ans), b = evaluate(node.right, ans), r;
+  switch (node.op) {
+    case "+": r = a + b; break;
+    case "-": r = a - b; break;
+    case "*": r = a * b; break;
+    case "/":
+      if (b === 0) throw new Error("division by zero");
+      r = a / b; break;
+    case "//":
+      if (b === 0) throw new Error("integer division or modulo by zero");
+      r = Math.floor(a / b); break;
+    case "%":
+      if (b === 0) throw new Error("float modulo");
+      r = a - Math.floor(a / b) * b; break;
+    case "**":
+      r = Math.pow(a, b);
+      if (isNaN(r)) throw new Error("math domain error");
+      break;
+  }
+  if (r === Infinity || r === -Infinity) throw new Error("result is past what browser numbers hold");
+  return r;
+}
+
+/* Same display rule as format_result in calculator.py: whole values print
+   whole, and the rest are capped at 12 significant digits. */
+function formatResult(value) {
+  if (Number.isInteger(value) && Math.abs(value) < 1e21) return String(value);
+  return String(parseFloat(value.toPrecision(12)));
+}
+
+function nodeLabel(node) {
+  if (node.type === "num") return node.label;
+  if (node.type === "name") return node.name;
+  if (node.type === "bin" || node.type === "unary") return node.op;
+  return node.name;
+}
+function nodeChildren(node) {
+  if (node.type === "bin") return [node.left, node.right];
+  if (node.type === "unary") return [node.operand];
+  if (node.type === "call") return node.args;
+  return [];
+}
+
+/* I lay the tree out by counting leaves first, so a wide expression gets a
+   wide drawing instead of a squeezed one. Parents sit over the middle of
+   their children, and depth sets the row. */
+function drawTree(root) {
+  var svg = document.getElementById("treeSvg");
+  var leaves = 0, maxDepth = 0;
+  (function measure(n, d) {
+    maxDepth = Math.max(maxDepth, d);
+    var kids = nodeChildren(n);
+    if (!kids.length) { n._leaf = leaves++; return; }
+    kids.forEach(function (k) { measure(k, d + 1); });
+  })(root, 0);
+  (function place(n, d) {
+    n._y = 42 + d * 66;
+    var kids = nodeChildren(n);
+    if (!kids.length) { n._x = 52 + n._leaf * 84; return; }
+    kids.forEach(function (k) { place(k, d + 1); });
+    n._x = kids.reduce(function (s, k) { return s + k._x; }, 0) / kids.length;
+  })(root, 0);
+  var width = Math.max(420, leaves * 84 + 30), height = maxDepth * 66 + 96;
+  var lines = "", boxes = "";
+  (function render(n) {
+    nodeChildren(n).forEach(function (k) {
+      lines += '<path d="M' + n._x + " " + (n._y + 17) + " L" + k._x + " " + (k._y - 17) + '" fill="none"/>';
+      render(k);
+    });
+    var label = nodeLabel(n);
+    var w = Math.max(48, label.length * 10 + 20);
+    var inner = (n.type === "bin" || n.type === "unary" || n.type === "call");
+    boxes += '<rect x="' + (n._x - w / 2) + '" y="' + (n._y - 17) + '" width="' + w + '" height="34" rx="6" fill="' +
+      (inner ? "#2e3338" : "#efece2") + '" stroke="#7a7462"/>' +
+      '<text x="' + n._x + '" y="' + (n._y + 5) + '" fill="' + (inner ? "#f2efe6" : "#26241f") + '">' + label + "</text>";
+  })(root);
+  svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+  svg.innerHTML = '<g stroke="#7a7462" stroke-width="1.6">' + lines + "</g>" +
+    '<g font-family="ui-monospace, Consolas, monospace" font-size="15" text-anchor="middle">' + boxes + "</g>";
+}
+
+var exprInput = document.getElementById("expr");
+var resultOut = document.getElementById("result");
+var ansOut = document.getElementById("ansOut");
+var treeStatus = document.getElementById("treeStatus");
+var ansValue = 0;
+
+function refresh(commit) {
+  var text = exprInput.value.trim();
+  if (!text) {
+    resultOut.textContent = "";
+    treeStatus.textContent = "The display is empty. Type something and the tree follows.";
+    return;
+  }
+  try {
+    var root = parseTokens(tokenize(text));
+    drawTree(root);
+    var value = evaluate(root, ansValue);
+    resultOut.textContent = "= " + formatResult(value);
+    resultOut.style.color = "";
+    treeStatus.textContent = "Tree for: " + text;
+    if (commit) {
+      ansValue = value;
+      ansOut.textContent = "ans = " + formatResult(ansValue);
+    }
+  } catch (err) {
+    resultOut.textContent = "error: " + err.message;
+    resultOut.style.color = "#8f2f1c";
+    treeStatus.textContent = "No tree yet: " + err.message + ". The program refuses this too, in its own words.";
+  }
+}
+
+/* I build the keys from two lists so the keypad and the function strip stay
+   in step with each other: both come from what calculator.py allows,
+   written out once here. */
+var FN_NAMES = ["sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "log", "log2", "log10", "ln", "exp", "abs", "floor", "ceil", "round", "min", "max"];
+var fnRow = document.getElementById("fnRow");
+FN_NAMES.forEach(function (name) {
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "key fn"; b.textContent = name;
+  b.setAttribute("data-insert", name + "(");
+  fnRow.appendChild(b);
+});
+var KEYS = [
+  { t: "(", i: "(" }, { t: ")", i: ")" }, { t: "pi", i: "pi" }, { t: "e", i: "e" }, { t: "tau", i: "tau" },
+  { t: "7", i: "7" }, { t: "8", i: "8" }, { t: "9", i: "9" }, { t: "/", i: " / ", op: 1 }, { t: "//", i: " // ", op: 1 },
+  { t: "4", i: "4" }, { t: "5", i: "5" }, { t: "6", i: "6" }, { t: "*", i: " * ", op: 1 }, { t: "%", i: " % ", op: 1 },
+  { t: "1", i: "1" }, { t: "2", i: "2" }, { t: "3", i: "3" }, { t: "-", i: " - ", op: 1 }, { t: "**", i: " ** ", op: 1 },
+  { t: "0", i: "0" }, { t: ".", i: "." }, { t: "ans", i: "ans" }, { t: "+", i: " + ", op: 1 }, { t: "=", act: "eq", go: 1 },
+  { t: "C", act: "clear", danger: 1 }, { t: "back", act: "back" }, { t: ",", i: ", " }, { t: "(", i: "(" }, { t: ")", i: ")" }
+];
+var grid = document.getElementById("keyGrid");
+KEYS.forEach(function (k) {
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "key" + (k.op ? " op" : "") + (k.go ? " go" : "") + (k.danger ? " danger" : "");
+  b.textContent = k.t;
+  if (k.i !== undefined) b.setAttribute("data-insert", k.i);
+  if (k.act) b.setAttribute("data-action", k.act);
+  grid.appendChild(b);
+});
+
+function pressButton(b) {
+  b.classList.add("pressed");
+  setTimeout(function () { b.classList.remove("pressed"); }, 110);
+  var insert = b.getAttribute("data-insert");
+  var action = b.getAttribute("data-action");
+  if (insert !== null) {
+    var s = exprInput.selectionStart || exprInput.value.length;
+    exprInput.value = exprInput.value.slice(0, s) + insert + exprInput.value.slice(exprInput.selectionEnd || s);
+    exprInput.focus();
+    var caret = s + insert.length;
+    try { exprInput.setSelectionRange(caret, caret); } catch (e) { /* older browsers keep the caret at the end, which is fine here */ }
+  }
+  if (action === "clear") exprInput.value = "";
+  if (action === "back") exprInput.value = exprInput.value.slice(0, -1);
+  refresh(action === "eq");
+}
+document.querySelectorAll(".key").forEach(function (b) {
+  b.addEventListener("click", function () { pressButton(b); });
+});
+document.querySelectorAll("[data-example]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    exprInput.value = b.getAttribute("data-example");
+    refresh(false);
+    exprInput.focus();
+  });
+});
+exprInput.addEventListener("input", function () { refresh(false); });
+exprInput.addEventListener("keydown", function (ev) {
+  if (ev.key === "Enter") { ev.preventDefault(); refresh(true); }
+});
+refresh(false);
+
+/* Sections arrive in reading order as the visitor scrolls, the way I would
+   hand over bench notes one at a time. If the observer is missing, every
+   section is simply marked as arrived at once. */
+if ("IntersectionObserver" in window) {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll(".note, .treebench, figure.plate").forEach(function (el) { io.observe(el); });
+} else {
+  document.querySelectorAll(".note, .treebench, figure.plate").forEach(function (el) { el.classList.add("in"); });
+}
+</script>
 </body>
 </html>
